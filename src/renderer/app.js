@@ -867,8 +867,10 @@
     e.preventDefault();
     dragDepth = 0;
     $('#drop-overlay').classList.add('hidden');
+    const docx = [...e.dataTransfer.files].find((f) => /\.docx$/i.test(f.name));
+    if (docx) return window.Checker.checkFile(docx);
     const files = [...e.dataTransfer.files].filter((f) => /\.(pdf|bib|ris)$/i.test(f.name));
-    if (!files.length) return toast('Drop PDF, .bib or .ris files.', 'error');
+    if (!files.length) return toast('Drop PDF, .bib, .ris or .docx files.', 'error');
     reportImport(await attempt(() => api.importFiles(files)));
   });
 
@@ -935,6 +937,8 @@
     renderDetail(false);
   }
   $('#btn-settings').onclick = openSettings;
+
+  window.App = { toast, modal, attempt, esc, get settings() { return state.settings; } };
 
   // -------------------------------------------------------------------------
   // Boot

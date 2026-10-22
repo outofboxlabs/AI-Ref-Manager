@@ -16,7 +16,8 @@ function loadPdfjs() {
 async function extractPdf(filePath, { maxPages = Infinity } = {}) {
   const pdfjs = await loadPdfjs();
   const data = new Uint8Array(fs.readFileSync(filePath));
-  const doc = await pdfjs.getDocument({ data, isEvalSupported: false, useSystemFonts: false, verbosity: 0 }).promise;
+  const task = pdfjs.getDocument({ data, isEvalSupported: false, useSystemFonts: false, verbosity: 0 });
+  const doc = await task.promise;
   try {
     const pages = [];
     const n = Math.min(doc.numPages, maxPages);
@@ -45,7 +46,7 @@ async function extractPdf(filePath, { maxPages = Infinity } = {}) {
     }
     return { pages, info, numPages: doc.numPages };
   } finally {
-    await doc.destroy();
+    await task.destroy();
   }
 }
 

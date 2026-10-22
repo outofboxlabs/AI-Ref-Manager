@@ -13,6 +13,7 @@ const lookup = require('./lookup');
 const ai = require('./ai');
 const { findDoi, findArxivId, cleanDoi } = require('./identifiers');
 const citations = require('../shared/citations');
+const checker = require('./checker');
 
 let win;
 let lib;
@@ -353,6 +354,99 @@ function registerIpc() {
     const items = (ids && ids.length ? ids.map((i) => lib.get(i)) : lib.list()).filter(Boolean);
     const text = await ai.askLibrary(settings.ai(), items, history, (delta) => event.sender.send('ai:delta', { reqId, delta }));
     return { text, refs: items.map((i) => i.id) };
+  });
+
+  // --- manuscript reference check -------------------------------------------
+
+  const checks = new Map();
+  let checkCounter = 0;
+
+  /** Check results without the parsed document (not serializable). */
+  function publicCheck(id) {
+    const { doc, ...rest } = checks.get(id);
+    return { id, ...rest };
+  }
+
+  async function runCheck(event, filePath) {
+    const result = await checker.checkDocument(filePath, {
+      settings: importCfg(),
+      onProgress: (p) => event.sender.send('check:progress', p),
+    });
+    const id = `c${++checkCounter}`;
+    checks.set(id, result);
+    return publicCheck(id);
+  }
+
+  handle('check:openDialog', async (event) => {
+    const r = await dialog.showOpenDialog(win, {
+      title: 'Check references in a Word document',
+      properties: ['openFile'],
+      filters: [{ name: 'Word document', extensions: ['docx'] }],
+    });
+    if (r.canceled) return null;
+    return runCheck(event, r.filePaths[0]);
+  });
+  handle('check:path', (event, p) => runCheck(event, p));
+
+  function getRef(checkId, index) {
+    const c = checks.get(checkId);
+    if (!c) throw new Error('This check has expired. Run it again.');
+    const ref = c.refs[index];
+    if (!ref) throw new Error('Reference not found.');
+    return { c, ref };
+  }
+
+  handle('check:resolve', async (_e, checkId, index, input) => {
+    const { ref } = getRef(checkId, index);
+    const v = await checker.verifyWithInput(ref, input);
+    Object.assign(ref, v, { userInput: input });
+    return publicCheck(checkId);
+  });
+  handle('check:accept', (_e, checkId, index, candidateIndex) => {
+    const { ref } = getRef(checkId, index);
+    const rec = candidateIndex === -1 ? ref.record : ref.candidates[candidateIndex];
+    if (!rec) throw new Error('Nothing to accept.');
+    const m = checker.matchScore(ref, rec);
+    Object.assign(ref, { status: 'confirmed', record: rec, corrected: { ...rec, year: /^\d{4}[a-z]$/.test(ref.year) && ref.year.startsWith(rec.year) ? ref.year : rec.year }, issues: checker.findIssues(ref, rec, m), source: (ref.source || 'Crossref') + ', accepted by you', apply: true });
+    return publicCheck(checkId);
+  });
+  handle('check:setApply', (_e, checkId, indexes, value) => {
+    for (const i of indexes) {
+      const { ref } = getRef(checkId, i);
+      if (ref.corrected) ref.apply = !!value;
+    }
+    return publicCheck(checkId);
+  });
+  handle('check:save', async (_e, checkId, style) => {
+    const c = checks.get(checkId);
+    const base = c.fileName.replace(/\.docx$/i, '');
+    const r = await dialog.showSaveDialog(win, {
+      title: 'Save corrected copy',
+      defaultPath: path.join(path.dirname(c.file), `${base} (references checked).docx`),
+      filters: [{ name: 'Word document', extensions: ['docx'] }],
+    });
+    if (r.canceled) return null;
+    if (path.resolve(r.filePath) === path.resolve(c.file)) throw new Error('Save as a new file so your original stays untouched.');
+    return checker.saveCorrectedDocx(c, style, r.filePath);
+  });
+  handle('check:addToLibrary', (_e, checkId) => {
+    const c = checks.get(checkId);
+    let added = 0;
+    let existing = 0;
+    for (const ref of c.refs) {
+      if (!ref.corrected || !['correct', 'corrected', 'confirmed', 'likely'].includes(ref.status)) continue;
+      if (lib.findDuplicate({ doi: ref.corrected.doi, arxiv: ref.corrected.arxiv })) { existing++; continue; }
+      lib.add({ ...ref.corrected, tags: [c.fileName.replace(/\.docx$/i, '')] });
+      added++;
+    }
+    notifyChanged();
+    return { added, existing };
+  });
+  handle('saveText', async (_e, content, defaultName, ext) => {
+    const r = await dialog.showSaveDialog(win, { defaultPath: defaultName, filters: [{ name: ext.toUpperCase(), extensions: [ext] }] });
+    if (r.canceled) return null;
+    fs.writeFileSync(r.filePath, content);
+    return r.filePath;
   });
 
   // --- settings -------------------------------------------------------------

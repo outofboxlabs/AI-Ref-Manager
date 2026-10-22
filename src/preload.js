@@ -44,6 +44,15 @@ contextBridge.exposeInMainWorld('api', {
   chat: (id, history, reqId) => call('ai:chat', id, history, reqId),
   askLibrary: (ids, history, reqId) => call('ai:askLibrary', ids, history, reqId),
 
+  checkDocxDialog: () => call('check:openDialog'),
+  checkDocxFile: (file) => call('check:path', webUtils.getPathForFile(file)),
+  checkResolve: (checkId, index, input) => call('check:resolve', checkId, index, input),
+  checkAccept: (checkId, index, candidateIndex) => call('check:accept', checkId, index, candidateIndex),
+  checkSetApply: (checkId, indexes, value) => call('check:setApply', checkId, indexes, value),
+  checkSave: (checkId, style) => call('check:save', checkId, style),
+  checkAddToLibrary: (checkId) => call('check:addToLibrary', checkId),
+  saveText: (content, defaultName, ext) => call('saveText', content, defaultName, ext),
+
   getSettings: () => call('settings:get'),
   updateSettings: (patch) => call('settings:update', patch),
   testKey: () => call('settings:testKey'),
@@ -52,4 +61,5 @@ contextBridge.exposeInMainWorld('api', {
   onLibraryChanged: (cb) => on('library:changed', cb),
   onImportProgress: (cb) => on('import:progress', cb),
   onAiDelta: (cb) => on('ai:delta', cb),
+  onCheckProgress: (cb) => on('check:progress', cb),
 });

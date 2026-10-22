@@ -295,6 +295,64 @@ async function askLibrary({ apiKey, model }, items, history, onText) {
   return textOf(msg);
 }
 
+// ---------------------------------------------------------------------------
+// Parsing reference-list entries from a manuscript
+
+const REFS_SCHEMA = {
+  type: 'object',
+  properties: {
+    references: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          index: { type: 'integer' },
+          type: METADATA_SCHEMA.properties.type,
+          authors: METADATA_SCHEMA.properties.authors,
+          year: { type: 'string', description: 'Year exactly as written, including any letter suffix like 2020a; "n.d." if undated' },
+          title: { type: 'string' },
+          journal: { type: 'string', description: 'Journal, proceedings, book (for chapters) or website name' },
+          volume: { type: 'string' },
+          issue: { type: 'string' },
+          pages: { type: 'string' },
+          publisher: { type: 'string' },
+          doi: { type: 'string' },
+          url: { type: 'string' },
+        },
+        required: ['index', 'type', 'authors', 'year', 'title', 'journal', 'volume', 'issue', 'pages', 'publisher', 'doi', 'url'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['references'],
+  additionalProperties: false,
+};
+
+const REFS_SYSTEM = `You parse reference-list entries from academic manuscripts into structured fields.
+Parse exactly what each entry says, even if it looks wrong or incomplete - do not correct, complete or look anything up.
+Leave fields empty when the entry does not contain them. For organizations as authors, put the name in family and leave given empty.
+Return one result per input entry, with the same index.`;
+
+/** Parse raw reference strings. Returns an array aligned with `raws`. */
+async function parseReferences({ apiKey, model }, raws) {
+  const client = makeClient(apiKey);
+  const out = new Array(raws.length).fill(null);
+  const BATCH = 40;
+  for (let start = 0; start < raws.length; start += BATCH) {
+    const chunk = raws.slice(start, start + BATCH);
+    const listing = chunk.map((r, i) => `<entry index="${start + i}">${r}</entry>`).join('\n');
+    const json = await runJson(client, {
+      ...baseParams(model),
+      max_tokens: 32000,
+      output_config: { effort: 'low', format: { type: 'json_schema', schema: REFS_SCHEMA } },
+      system: REFS_SYSTEM,
+      messages: [{ role: 'user', content: `Parse these reference-list entries:\n\n${listing}` }],
+    });
+    for (const r of json.references || []) if (r.index >= 0 && r.index < raws.length) out[r.index] = r;
+  }
+  return out;
+}
+
 async function testKey({ apiKey, model }) {
   const client = makeClient(apiKey);
   const msg = await run(client, {
@@ -317,5 +375,6 @@ module.exports = {
   summarize,
   chatWithPaper,
   askLibrary,
+  parseReferences,
   testKey,
 };

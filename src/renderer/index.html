@@ -14,6 +14,7 @@
       <button id="btn-add-pdf" class="primary" title="Add PDF files (or drag them onto the window)">+ Add PDFs</button>
       <button id="btn-add-id" title="Add a reference by DOI or arXiv id">Add by DOI</button>
       <button id="btn-import-refs" title="Import a BibTeX or RIS file, e.g. exported from Mendeley or Zotero">Import .bib / .ris</button>
+      <button id="btn-check-doc" class="check" title="Check the citations and reference list in a Word document">✓ Check Word doc</button>
     </div>
     <div class="search-wrap">
       <input id="search" type="search" placeholder="Search titles, authors, notes, full text…" autocomplete="off" />
@@ -167,6 +168,33 @@
     </aside>
   </main>
 
+  <!-- Manuscript reference check -->
+  <section class="check-view hidden" id="check-view">
+    <div class="check-head">
+      <div>
+        <div class="muted small">Reference check</div>
+        <h2 id="ck-title"></h2>
+      </div>
+      <span class="spacer"></span>
+      <label class="inline">Style <select id="ck-style"></select></label>
+      <button id="ck-save" class="primary" title="Save a copy of the document with the accepted corrections">Save corrected copy</button>
+      <button id="ck-copy" title="Copy the corrected reference list">Copy reference list</button>
+      <button id="ck-more" title="More export options">Export ▾</button>
+      <button class="icon" id="ck-close" aria-label="Close">✕</button>
+    </div>
+    <div class="ck-progress hidden" id="ck-progress"><span class="spinner"></span> <span id="ck-progress-text"></span></div>
+    <div id="ck-body" class="hidden">
+      <div class="ck-stats" id="ck-stats"></div>
+      <div class="ck-warnings" id="ck-warnings"></div>
+      <div class="tabs ck-tabs" id="ck-tabs">
+        <button data-cktab="input" class="active">Needs your input</button>
+        <button data-cktab="refs">All references</button>
+        <button data-cktab="cites">In-text citations</button>
+      </div>
+      <div class="ck-panel" id="ck-panel"></div>
+    </div>
+  </section>
+
   <!-- Ask-library drawer -->
   <div class="drawer hidden" id="ask-drawer">
     <div class="drawer-head">
@@ -192,11 +220,12 @@
     </div>
   </div>
 
-  <div class="drop-overlay hidden" id="drop-overlay"><div>Drop PDFs, .bib or .ris files to add them</div></div>
+  <div class="drop-overlay hidden" id="drop-overlay"><div>Drop PDFs, .bib or .ris files to add them — or a .docx to check its references</div></div>
   <div class="toasts" id="toasts"></div>
 
   <script src="../shared/citations.js"></script>
   <script src="markdown.js"></script>
   <script src="app.js"></script>
+  <script src="check.js"></script>
 </body>
 </html>

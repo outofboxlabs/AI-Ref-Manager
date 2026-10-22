@@ -5,16 +5,44 @@
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
-    "test": "node --test test/"
+    "test": "node --test test/*.test.js",
+    "dist": "electron-builder"
   },
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/sdk": "^1.1.0",
+    "jszip": "^3.10.2",
     "pdfjs-dist": "^6.4.299"
   },
   "devDependencies": {
-    "electron": "^45.0.0"
+    "electron": "^45.0.0",
+    "electron-builder": "^26.15.3"
   },
   "productName": "RefMind",
-  "private": true
+  "private": true,
+  "build": {
+    "appId": "com.outofboxlabs.refmind",
+    "productName": "RefMind",
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.education",
+      "target": [
+        "dmg"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Education"
+    }
+  }
 }

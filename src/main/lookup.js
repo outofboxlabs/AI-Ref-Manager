@@ -44,4 +44,28 @@ async function searchByTitle(title, author = '') {
   return bestScore >= 0.85 ? fromCrossref(best) : null;
 }
 
-module.exports = { lookupDoi, lookupArxiv, searchByTitle };
+/**
+ * Search Crossref with a raw reference string (Crossref's bibliographic query
+ * is built for this). Returns up to `rows` candidate items.
+ */
+async function searchBibliographic(raw, rows = 3) {
+  const q = new URLSearchParams({ 'query.bibliographic': String(raw).slice(0, 1000), rows: String(rows) });
+  const json = await getJson(`https://api.crossref.org/works?${q}`);
+  return (json.message?.items || []).map(fromCrossref);
+}
+
+/**
+ * Find a DOI on a web page (publisher landing pages carry citation_doi /
+ * dc.identifier meta tags). Returns '' when none is found.
+ */
+async function doiFromPage(url) {
+  const res = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'text/html' }, redirect: 'follow', signal: AbortSignal.timeout(15000) });
+  if (!res.ok) throw new Error(`${res.status} from ${new URL(url).host}`);
+  const html = (await res.text()).slice(0, 500000);
+  const meta = /<meta[^>]+name=["'](?:citation_doi|dc\.identifier|DC\.Identifier|prism\.doi)["'][^>]+content=["']([^"']+)["']/i.exec(html)
+    || /<meta[^>]+content=["']([^"']+)["'][^>]+name=["'](?:citation_doi|dc\.identifier|prism\.doi)["']/i.exec(html);
+  const doi = meta ? cleanDoi(meta[1]) : '';
+  return /^10\./.test(doi) ? doi : '';
+}
+
+module.exports = { lookupDoi, lookupArxiv, searchByTitle, searchBibliographic, doiFromPage };
