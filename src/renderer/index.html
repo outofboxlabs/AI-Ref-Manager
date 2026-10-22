@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-src file:; object-src file:" />
+  <title>RefMind</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="toolbar">
+    <div class="brand"><span class="logo">◆</span> RefMind</div>
+    <div class="toolbar-actions">
+      <button id="btn-add-pdf" class="primary" title="Add PDF files (or drag them onto the window)">+ Add PDFs</button>
+      <button id="btn-add-id" title="Add a reference by DOI or arXiv id">Add by DOI</button>
+      <button id="btn-import-refs" title="Import a BibTeX or RIS file, e.g. exported from Mendeley or Zotero">Import .bib / .ris</button>
+    </div>
+    <div class="search-wrap">
+      <input id="search" type="search" placeholder="Search titles, authors, notes, full text…" autocomplete="off" />
+    </div>
+    <button id="btn-ask" class="ai" title="Ask a question across your library">✦ Ask library</button>
+    <button id="btn-settings" class="icon" title="Settings" aria-label="Settings">⚙</button>
+  </header>
+
+  <main class="layout">
+    <nav class="sidebar" id="sidebar">
+      <section>
+        <h3>Library</h3>
+        <ul class="nav" id="nav-library"></ul>
+      </section>
+      <section>
+        <h3>Collections <button class="mini" id="btn-new-collection" title="New collection">+</button></h3>
+        <ul class="nav" id="nav-collections"></ul>
+      </section>
+      <section>
+        <h3>Tags</h3>
+        <ul class="nav tags" id="nav-tags"></ul>
+      </section>
+    </nav>
+
+    <section class="list-pane">
+      <div class="list-header">
+        <div id="list-title" class="list-title">All references</div>
+        <div class="list-tools">
+          <select id="sort" title="Sort by">
+            <option value="added">Recently added</option>
+            <option value="title">Title</option>
+            <option value="year">Year (newest)</option>
+            <option value="author">First author</option>
+          </select>
+        </div>
+      </div>
+      <div class="bulk-bar hidden" id="bulk-bar">
+        <span id="bulk-count"></span>
+        <button data-bulk="tag">Add tag</button>
+        <button data-bulk="collection">Add to collection</button>
+        <button data-bulk="read">Mark read</button>
+        <button data-bulk="export">Export</button>
+        <button data-bulk="delete" class="danger">Delete</button>
+      </div>
+      <div class="table-wrap">
+        <table class="refs">
+          <thead>
+            <tr><th class="c-star"></th><th>Title</th><th class="c-year">Year</th><th class="c-src">Published in</th><th class="c-ai">AI</th></tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <div class="empty hidden" id="empty">
+          <div class="empty-icon">◆</div>
+          <h2>Your library is empty</h2>
+          <p>Drag PDFs anywhere onto this window, or use <b>+ Add PDFs</b>.<br />
+            RefMind reads each paper, finds its DOI, and fills in the title, authors and journal for you.</p>
+          <p class="muted">Coming from Mendeley? Export your library as BibTeX and use <b>Import .bib / .ris</b>.</p>
+        </div>
+      </div>
+      <div class="status" id="status"></div>
+    </section>
+
+    <aside class="detail-pane" id="detail">
+      <div class="detail-empty" id="detail-empty">Select a reference to see its details.</div>
+      <div class="detail-body hidden" id="detail-body">
+        <div class="detail-head">
+          <div class="detail-type" id="d-type"></div>
+          <h2 id="d-title"></h2>
+          <div class="detail-authors" id="d-authors"></div>
+          <div class="detail-pub" id="d-pub"></div>
+          <div class="detail-actions">
+            <button id="d-open-pdf">Open PDF</button>
+            <button id="d-attach">Attach PDF</button>
+            <button id="d-fav" title="Favorite">☆</button>
+            <button id="d-read" title="Toggle read"></button>
+            <span class="spacer"></span>
+            <select id="d-style" title="Citation style"></select>
+            <button id="d-copy">Copy citation</button>
+          </div>
+        </div>
+        <div class="tabs" role="tablist">
+          <button data-tab="info" class="active">Details</button>
+          <button data-tab="summary">✦ Summary</button>
+          <button data-tab="chat">✦ Chat</button>
+          <button data-tab="notes">Notes</button>
+          <button data-tab="pdf">PDF</button>
+        </div>
+
+        <div class="tab-panel" data-panel="info">
+          <form id="info-form" class="info-form" autocomplete="off">
+            <label>Type
+              <select name="type">
+                <option value="article">Journal article</option>
+                <option value="preprint">Preprint</option>
+                <option value="inproceedings">Conference paper</option>
+                <option value="book">Book</option>
+                <option value="chapter">Book chapter</option>
+                <option value="thesis">Thesis</option>
+                <option value="report">Report</option>
+                <option value="misc">Other</option>
+              </select>
+            </label>
+            <label class="wide">Title <textarea name="title" rows="2"></textarea></label>
+            <label class="wide">Authors <span class="hint">one per line, “Family, Given”</span><textarea name="authors" rows="3"></textarea></label>
+            <label>Year <input name="year" /></label>
+            <label class="wide">Journal / Conference <input name="journal" /></label>
+            <label>Volume <input name="volume" /></label>
+            <label>Issue <input name="issue" /></label>
+            <label>Pages <input name="pages" /></label>
+            <label class="wide">Publisher <input name="publisher" /></label>
+            <label class="wide">DOI <input name="doi" /></label>
+            <label class="wide">URL <input name="url" /></label>
+            <label class="wide">Tags <span class="hint">comma-separated</span><input name="tags" /></label>
+            <label class="wide">Abstract <textarea name="abstract" rows="6"></textarea></label>
+          </form>
+          <div class="collections-box">
+            <div class="box-title">Collections</div>
+            <div id="d-collections" class="chips"></div>
+          </div>
+          <div class="info-footer">
+            <button id="d-refresh">↻ Refresh metadata</button>
+            <span class="muted" id="d-meta-source"></span>
+            <span class="spacer"></span>
+            <button id="d-delete" class="danger">Delete</button>
+          </div>
+        </div>
+
+        <div class="tab-panel hidden" data-panel="summary">
+          <div id="summary-content"></div>
+        </div>
+
+        <div class="tab-panel hidden chat-panel" data-panel="chat">
+          <div class="chat-log" id="chat-log"></div>
+          <div class="chat-suggest" id="chat-suggest"></div>
+          <form class="chat-input" id="chat-form">
+            <textarea id="chat-text" rows="2" placeholder="Ask about this paper…"></textarea>
+            <button type="submit" class="ai">Send</button>
+          </form>
+          <button class="link" id="chat-clear">Clear conversation</button>
+        </div>
+
+        <div class="tab-panel hidden" data-panel="notes">
+          <textarea id="notes" class="notes" placeholder="Your notes on this paper. Notes are searchable and included when you ask the library."></textarea>
+          <div class="muted small" id="notes-status"></div>
+        </div>
+
+        <div class="tab-panel hidden pdf-panel" data-panel="pdf">
+          <div id="pdf-holder"></div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Ask-library drawer -->
+  <div class="drawer hidden" id="ask-drawer">
+    <div class="drawer-head">
+      <h3>✦ Ask your library</h3>
+      <select id="ask-scope" title="Which papers to include"></select>
+      <button class="icon" id="ask-close" aria-label="Close">✕</button>
+    </div>
+    <div class="chat-log" id="ask-log"></div>
+    <div class="chat-suggest" id="ask-suggest"></div>
+    <form class="chat-input" id="ask-form">
+      <textarea id="ask-text" rows="2" placeholder="e.g. Which papers compare transformers with RNNs? What do they conclude?"></textarea>
+      <button type="submit" class="ai">Ask</button>
+    </form>
+    <button class="link" id="ask-clear">New conversation</button>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal-backdrop hidden" id="modal">
+    <div class="modal" role="dialog" aria-modal="true">
+      <h3 id="modal-title"></h3>
+      <div id="modal-body"></div>
+      <div class="modal-actions" id="modal-actions"></div>
+    </div>
+  </div>
+
+  <div class="drop-overlay hidden" id="drop-overlay"><div>Drop PDFs, .bib or .ris files to add them</div></div>
+  <div class="toasts" id="toasts"></div>
+
+  <script src="../shared/citations.js"></script>
+  <script src="markdown.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
