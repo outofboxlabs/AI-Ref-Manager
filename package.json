@@ -1,0 +1,20 @@
+{
+  "name": "ai-ref-manager",
+  "version": "0.1.0",
+  "description": "AI-powered desktop reference manager",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.1.0",
+    "pdfjs-dist": "^6.4.299"
+  },
+  "devDependencies": {
+    "electron": "^45.0.0"
+  },
+  "productName": "RefMind",
+  "private": true
+}
